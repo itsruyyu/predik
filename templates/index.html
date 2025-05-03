@@ -1,0 +1,130 @@
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prediksi Jumlah Penduduk Sulawesi Utara</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-4 text-center">
+      Prediksi Jumlah Penduduk Sulawesi Utara
+    </h1>
+
+    <div class="bg-white p-6 rounded-xl shadow-md">
+      <form id="upload-form" class="space-y-4" enctype="multipart/form-data">
+        <div>
+          <label for="file" class="block font-semibold mb-2">Unggah File Data (Excel)</label>
+          <input type="file" id="file" name="file" accept=".xlsx, .csv" class="w-full p-2 border border-gray-300 rounded" required>
+          <div id="file-error" class="text-red-500 text-sm"></div>
+        </div>
+
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl">
+          Prediksi
+        </button>
+      </form>
+    </div>
+
+    <div id="result" class="mt-8 hidden">
+      <h2 class="text-2xl font-bold mb-4">Hasil Prediksi</h2>
+      
+      <!-- Tempat untuk grafik -->
+      <div class="mb-6">
+        <canvas id="populationChart" class="w-full h-64"></canvas>
+      </div>
+
+      <!-- Tempat untuk tabel -->
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-300 rounded">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="px-4 py-2 text-left">Tahun</th>
+              <th class="px-4 py-2 text-left">Jumlah Penduduk</th>
+            </tr>
+          </thead>
+          <tbody id="prediction-table-body">
+            <!-- Baris hasil akan ditambahkan via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart.js untuk visualisasi -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- JavaScript tambahan untuk kirim data ke backend dan tampilkan hasil -->
+  <script>
+    const form = document.getElementById('upload-form');
+    const resultSection = document.getElementById('result');
+    const predictionTable = document.getElementById('prediction-table-body');
+    const chartCanvas = document.getElementById('populationChart');
+    const fileInput = document.getElementById('file');
+    const fileError = document.getElementById('file-error');
+
+    let chart;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+
+      if (!fileInput.files.length) {
+        fileError.textContent = 'Silakan pilih file data';
+        return;
+      }
+
+      const response = await fetch('/predict', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Tampilkan tabel
+        predictionTable.innerHTML = '';
+        data.predictions.forEach(item => {
+          const row = `<tr><td class="px-4 py-2">${item.year}</td><td class="px-4 py-2">${item.population}</td></tr>`;
+          predictionTable.insertAdjacentHTML('beforeend', row);
+        });
+
+        // Tampilkan grafik
+        const labels = data.predictions.map(p => p.year);
+        const values = data.predictions.map(p => p.population);
+        if (chart) chart.destroy();
+        chart = new Chart(chartCanvas, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Jumlah Penduduk',
+              data: values,
+              borderColor: 'rgb(59, 130, 246)',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              tension: 0.3
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: true }
+            }
+          }
+        });
+
+        resultSection.classList.remove('hidden');
+        fileError.textContent = '';
+      } else {
+        alert('Gagal melakukan prediksi. Pastikan format data benar.');
+      }
+    });
+  </script>
+</body>
+</html>
+```
