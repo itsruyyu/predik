@@ -39,10 +39,9 @@ def prepare_data(df, time_steps=3):
 
     X, y = create_dataset(fitur_scaled, time_steps)
     current_seq = fitur_scaled[-time_steps:]
-    return X, y, current_seq, tahun, scaler
+    return X, y, current_seq, tahun, scaler, df
 
 # Fungsi retraining
-
 def retrain_until_converged(X_train, y_train, X_test, y_test, model, scaler, max_retries=5):
     retries = 0
     mape = float('inf')
@@ -74,6 +73,9 @@ def index():
 @app.route('/predict', methods=['POST'])
 def predict():
     file = request.files.get('file')
+    future_years = int(request.form.get('years', 10))
+    show_actual = request.form.get('show_actual') == 'true'
+
     if not file:
         return jsonify({'error': 'No file uploaded'}), 400
 
@@ -84,9 +86,8 @@ def predict():
     try:
         df = pd.read_csv(filepath)
         time_steps = 3
-        future_years = 10
 
-        X, y, current_seq, tahun, scaler = prepare_data(df, time_steps)
+        X, y, current_seq, tahun, scaler, clean_df = prepare_data(df, time_steps)
 
         train_idx = np.where(tahun <= 2022)[0]
         test_idx = np.where(tahun > 2022)[0]
@@ -118,11 +119,17 @@ def predict():
         last_year = int(tahun[-1])
         result = [{'year': last_year + i + 1, 'population': round(p)} for i, p in enumerate(pred_inv)]
 
-        return jsonify({
+        response = {
             'predictions': result,
             'mape': round(mape, 3),
             'mae_percent': round(mae_percent, 3)
-        })
+        }
+
+        if show_actual:
+            actual_data = [{'year': int(y), 'population': int(p)} for y, p in zip(clean_df['Tahun'], clean_df['Jumlah Penduduk'])]
+            response['actual'] = actual_data
+
+        return jsonify(response)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
